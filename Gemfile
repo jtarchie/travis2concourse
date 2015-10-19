@@ -1,3 +1,5 @@
 source 'https://rubygems.org'
 
-gem 'uri-ssh_git'
+group :development do
+  gem 'rspec'
+end

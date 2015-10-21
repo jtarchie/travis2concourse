@@ -1,9 +1,10 @@
-require 'yaml'
 require 'open-uri'
+require 'uri'
+require 'yaml'
 
 manifest_uri  = ARGV[0]
 manifest      = YAML.load(open(manifest_uri).read)
-paths         = manifest_uri.split('/')
+paths         = URI.parse(manifest_uri).path.split('/')
 github_url    = "https://github.com/#{paths[1..2].join('/')}"
 github_branch = paths[3] || 'master'
 
@@ -17,7 +18,7 @@ pipeline['resources'] = [
 ]
 
 def docker_image(ruby_version)
-  case ruby_version
+  case ruby_version.to_s
   when /^jruby-.*/
     version = ruby_version.match(/jruby-(.*)/)[1]
     "jruby##{version}"
@@ -36,12 +37,12 @@ end
 
 case manifest['language']
 when 'ruby'
-  pipeline['jobs'] =
+  pipeline['jobs'] = [
     {
       'name' => 'Ruby',
       'plan' => [
         { 'get' => 'repo' },
-      ] + manifest['rvm'].collect do |ruby_version|
+      ] + [{ 'aggregate' => manifest['rvm'].collect { |ruby_version|
         if supported?(ruby_version)
           {
             'task' => "With version #{ruby_version}",
@@ -56,12 +57,12 @@ when 'ruby'
                   run_command(manifest)
                 ]
               },
-              'privileged' => manifest['sudo'] == 'true'
-            }
+            },
+            'privileged' => manifest['sudo'] == 'true'
           }
         end
-      end.compact
-  }
+      }.compact}]
+    }]
 end
 
 puts pipeline.to_yaml

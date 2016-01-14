@@ -13,7 +13,7 @@ pipeline['resources'] = [
   {
     'name'   => 'repo',
     'type'   => 'git',
-    'source' => { "uri" => github_url, "branch" => github_branch }
+    'source' => { 'uri' => github_url, 'branch' => github_branch }
   }
 ]
 
@@ -41,27 +41,26 @@ when 'ruby'
     {
       'name' => 'Ruby',
       'plan' => [
-        { 'get' => 'repo' },
-      ] + [{ 'aggregate' => manifest['rvm'].collect { |ruby_version|
-        if supported?(ruby_version)
-          {
-            'task' => "With version #{ruby_version}",
-            'config' => {
-              'platform' => 'linux',
-              'image' => "docker:///#{docker_image ruby_version}",
-              'inputs' => [{'name' => 'repo'}],
-              'run' => {
-                'path' => 'bash',
-                'args' => [
-                  '-c',
-                  run_command(manifest)
-                ]
-              },
-            },
-            'privileged' => manifest['sudo'] == 'true'
-          }
-        end
-      }.compact}]
+        { 'get' => 'repo' }
+      ] + manifest['rvm'].collect do |ruby_version|
+        next unless supported?(ruby_version)
+        {
+          'task' => "With version #{ruby_version}",
+          'config' => {
+            'platform' => 'linux',
+            'image' => "docker:///#{docker_image ruby_version}",
+            'inputs' => [{ 'name' => 'repo' }],
+            'run' => {
+              'path' => 'bash',
+              'args' => [
+                '-c',
+                run_command(manifest)
+              ]
+            }
+          },
+          'privileged' => manifest['sudo'] == 'true'
+        }
+      end.compact
     }]
 end
 
